@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blues Pomodoro</title>
+  <style>
+    :root {
+      --main: #003399;
+      --main-dark: #002266;
+      --text: #ffffff;
+      --muted: rgba(255, 255, 255, 0.78);
+      --panel: rgba(255, 255, 255, 0.12);
+      --panel-strong: rgba(255, 255, 255, 0.20);
+      --danger: #ffb3b3;
+      --shadow: rgba(0, 0, 0, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(160deg, var(--main), var(--main-dark));
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .app {
+      width: min(460px, 100%);
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 28px;
+      padding: 28px;
+      box-shadow: 0 24px 60px var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.6rem;
+      letter-spacing: 0.04em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .mode-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 22px 0;
+    }
+
+    .tab {
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--text);
+      padding: 10px 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: var(--text);
+      color: var(--main);
+      font-weight: 700;
+    }
+
+    .timer {
+      text-align: center;
+      margin: 28px 0 24px;
+    }
+
+    .time {
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(4.2rem, 18vw, 6.8rem);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .status {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 1rem;
+      min-height: 1.4em;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    button {
+      font: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .primary,
+    .secondary {
+      border-radius: 18px;
+      padding: 14px 16px;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .primary {
+      background: var(--text);
+      color: var(--main);
+    }
+
+    .secondary {
+      background: var(--panel-strong);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.20);
+    }
+
+    .settings {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.10);
+      color: var(--text);
+      padding: 10px;
+      text-align: center;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--text);
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.10);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 18px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .card .number {
+      font-size: 1.35rem;
+      font-weight: 800;
+    }
+
+    .card .label {
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-top: 3px;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.55;
+      margin: 18px 0 0;
+      text-align: center;
+    }
+
+    .danger {
+      color: var(--danger);
+    }
+
+    @media (max-width: 420px) {
+      body {
+        padding: 14px;
+      }
+
+      .app {
+        padding: 22px;
+        border-radius: 24px;
+      }
+
+      .mode-tabs,
+      .settings {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" aria-label="ポモドーロタイマー">
+    <header>
+      <h1>Blues Pomodoro</h1>
+      <p class="subtitle">仕事用ポモドーロタイマー</p>
+    </header>
+
+    <section class="mode-tabs" aria-label="モード選択">
+      <button class="tab active" data-mode="work">作業</button>
+      <button class="tab" data-mode="shortBreak">短い休憩</button>
+      <button class="tab" data-mode="longBreak">長い休憩</button>
+    </section>
+
+    <section class="timer">
+      <div id="time" class="time">25:00</div>
+      <div id="status" class="status">作業を始められます</div>
+    </section>
+
+    <section class="controls">
+      <button id="startPause" class="primary">開始</button>
+      <button id="reset" class="secondary">リセット</button>
+    </section>
+
+    <section class="settings" aria-label="時間設定">
+      <div>
+        <label for="workMinutes">作業 分</label>
+        <input id="workMinutes" type="number" min="1" max="180" value="25" />
+      </div>
+      <div>
+        <label for="shortBreakMinutes">短い休憩 分</label>
+        <input id="shortBreakMinutes" type="number" min="1" max="60" value="5" />
+      </div>
+      <div>
+        <label for="longBreakMinutes">長い休憩 分</label>
+        <input id="longBreakMinutes" type="number" min="1" max="120" value="15" />
+      </div>
+    </section>
+
+    <section class="meta">
+      <div class="card">
+        <div id="completed" class="number">0</div>
+        <div class="label">完了ポモドーロ</div>
+      </div>
+      <div class="card">
+        <div id="cycle" class="number">4</div>
+        <div class="label">長い休憩まで</div>
+      </div>
+    </section>
+
+    <p class="hint">
+      通知音はブラウザ内で鳴ります。iPhoneでは画面ロック中やバックグラウンドでは正確に動かない場合があります。
+    </p>
+  </main>
+
+  <script>
+    const modes = {
+      work: { label: "作業", status: "作業中です" },
+      shortBreak: { label: "短い休憩", status: "短い休憩です" },
+      longBreak: { label: "長い休憩", status: "長い休憩です" }
+    };
+
+    const timeEl = document.getElementById("time");
+    const statusEl = document.getElementById("status");
+    const startPauseBtn = document.getElementById("startPause");
+    const resetBtn = document.getElementById("reset");
+    const completedEl = document.getElementById("completed");
+    const cycleEl = document.getElementById("cycle");
+
+    const inputs = {
+      work: document.getElementById("workMinutes"),
+      shortBreak: document.getElementById("shortBreakMinutes"),
+      longBreak: document.getElementById("longBreakMinutes")
+    };
+
+    let currentMode = "work";
+    let remainingSeconds = getMinutes(currentMode) * 60;
+    let timerId = null;
+    let completedPomodoros = Number(localStorage.getItem("completedPomodoros") || 0);
+
+    completedEl.textContent = completedPomodoros;
+    updateCycle();
+    render();
+
+    document.querySelectorAll(".tab").forEach(button => {
+      button.addEventListener("click", () => {
+        switchMode(button.dataset.mode, true);
+      });
+    });
+
+    startPauseBtn.addEventListener("click", () => {
+      if (timerId) {
+        pauseTimer();
+      } else {
+        startTimer();
+      }
+    });
+
+    resetBtn.addEventListener("click", () => {
+      pauseTimer();
+      remainingSeconds = getMinutes(currentMode) * 60;
+      statusEl.textContent = `${modes[currentMode].label}をリセットしました`;
+      render();
+    });
+
+    Object.values(inputs).forEach(input => {
+      input.addEventListener("change", () => {
+        sanitizeInput(input);
+        if (!timerId) {
+          remainingSeconds = getMinutes(currentMode) * 60;
+          render();
+        }
+      });
+    });
+
+    function startTimer() {
+      startPauseBtn.textContent = "一時停止";
+      statusEl.textContent = modes[currentMode].status;
+
+      timerId = setInterval(() => {
+        remainingSeconds -= 1;
+        render();
+
+        if (remainingSeconds <= 0) {
+          completeMode();
+        }
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      clearInterval(timerId);
+      timerId = null;
+      startPauseBtn.textContent = "開始";
+      if (remainingSeconds > 0) {
+        statusEl.textContent = "一時停止中です";
+      }
+    }
+
+    function completeMode() {
+      clearInterval(timerId);
+      timerId = null;
+      startPauseBtn.textContent = "開始";
+      playBeep();
+
+      if (currentMode === "work") {
+        completedPomodoros += 1;
+        localStorage.setItem("completedPomodoros", String(completedPomodoros));
+        completedEl.textContent = completedPomodoros;
+        updateCycle();
+
+        const nextMode = completedPomodoros % 4 === 0 ? "longBreak" : "shortBreak";
+        switchMode(nextMode, false);
+        statusEl.textContent = "作業完了。休憩に入れます。";
+      } else {
+        switchMode("work", false);
+        statusEl.textContent = "休憩完了。次の作業に入れます。";
+      }
+    }
+
+    function switchMode(mode, manual) {
+      currentMode = mode;
+      remainingSeconds = getMinutes(mode) * 60;
+
+      document.querySelectorAll(".tab").forEach(button => {
+        button.classList.toggle("active", button.dataset.mode === mode);
+      });
+
+      if (manual) {
+        pauseTimer();
+        statusEl.textContent = `${modes[mode].label}モードです`;
+      }
+
+      render();
+    }
+
+    function render() {
+      const minutes = Math.floor(remainingSeconds / 60);
+      const seconds = remainingSeconds % 60;
+      timeEl.textContent = `${pad(minutes)}:${pad(seconds)}`;
+      document.title = `${timeEl.textContent} - ${modes[currentMode].label}`;
+    }
+
+    function getMinutes(mode) {
+      const value = Number(inputs[mode].value);
+      return Number.isFinite(value) && value > 0 ? Math.floor(value) : 25;
+    }
+
+    function sanitizeInput(input) {
+      const min = Number(input.min);
+      const max = Number(input.max);
+      let value = Number(input.value);
+
+      if (!Number.isFinite(value)) value = min;
+      value = Math.max(min, Math.min(max, Math.floor(value)));
+      input.value = value;
+    }
+
+    function updateCycle() {
+      const remaining = 4 - (completedPomodoros % 4 || 4);
+      cycleEl.textContent = remaining === 0 ? 4 : remaining;
+    }
+
+    function pad(number) {
+      return String(number).padStart(2, "0");
+    }
+
+    function playBeep() {
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        oscillator.type = "sine";
+        oscillator.frequency.value = 880;
+        gain.gain.setValueAtTime(0.001, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.25, audioContext.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.6);
+
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.65);
+      } catch (error) {
+        statusEl.textContent = "通知音を再生できませんでした";
+      }
+    }
+  </script>
+</body>
+</html>
