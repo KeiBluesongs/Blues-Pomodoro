@@ -191,6 +191,28 @@
       margin-top: 3px;
     }
 
+    .notification-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .small-button {
+      border-radius: 16px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.10);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .small-button.active {
+      background: var(--text);
+      color: var(--main);
+    }
+
     .hint {
       color: var(--muted);
       font-size: 0.78rem;
@@ -218,7 +240,8 @@
         grid-template-columns: 1fr;
       }
 
-      .controls {
+      .controls,
+      .notification-row {
         grid-template-columns: 1fr;
       }
     }
@@ -273,8 +296,13 @@
       </div>
     </section>
 
+    <section class="notification-row" aria-label="通知設定">
+      <button id="notifyButton" class="small-button">通知をオン</button>
+      <button id="testSound" class="small-button">通知音テスト</button>
+    </section>
+
     <p class="hint">
-      通知音はブラウザ内で鳴ります。iPhoneでは画面ロック中やバックグラウンドでは正確に動かない場合があります。
+      通知音は複数回鳴ります。通知はブラウザが許可した場合のみ表示されます。iPhoneでは画面ロック中やバックグラウンドでは正確に動かない場合があります。
     </p>
   </main>
 
@@ -291,6 +319,8 @@
     const resetBtn = document.getElementById("reset");
     const completedEl = document.getElementById("completed");
     const cycleEl = document.getElementById("cycle");
+    const notifyButton = document.getElementById("notifyButton");
+    const testSoundBtn = document.getElementById("testSound");
 
     const inputs = {
       work: document.getElementById("workMinutes"),
@@ -302,9 +332,11 @@
     let remainingSeconds = getMinutes(currentMode) * 60;
     let timerId = null;
     let completedPomodoros = Number(localStorage.getItem("completedPomodoros") || 0);
+    let notificationsEnabled = localStorage.getItem("notificationsEnabled") === "true";
 
     completedEl.textContent = completedPomodoros;
     updateCycle();
+    updateNotifyButton();
     render();
 
     document.querySelectorAll(".tab").forEach(button => {
@@ -326,6 +358,37 @@
       remainingSeconds = getMinutes(currentMode) * 60;
       statusEl.textContent = `${modes[currentMode].label}をリセットしました`;
       render();
+    });
+
+    notifyButton.addEventListener("click", async () => {
+      if (!("Notification" in window)) {
+        statusEl.textContent = "このブラウザは通知に対応していません";
+        return;
+      }
+
+      if (Notification.permission === "granted") {
+        notificationsEnabled = !notificationsEnabled;
+        localStorage.setItem("notificationsEnabled", String(notificationsEnabled));
+        updateNotifyButton();
+        statusEl.textContent = notificationsEnabled ? "通知をオンにしました" : "通知をオフにしました";
+        return;
+      }
+
+      if (Notification.permission === "denied") {
+        statusEl.textContent = "通知がブラウザ側で拒否されています";
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      notificationsEnabled = permission === "granted";
+      localStorage.setItem("notificationsEnabled", String(notificationsEnabled));
+      updateNotifyButton();
+      statusEl.textContent = notificationsEnabled ? "通知をオンにしました" : "通知は許可されませんでした";
+    });
+
+    testSoundBtn.addEventListener("click", () => {
+      playAlertSound();
+      showNotification("Blues Pomodoro", "通知テストです");
     });
 
     Object.values(inputs).forEach(input => {
@@ -365,7 +428,7 @@
       clearInterval(timerId);
       timerId = null;
       startPauseBtn.textContent = "開始";
-      playBeep();
+      playAlertSound();
 
       if (currentMode === "work") {
         completedPomodoros += 1;
@@ -376,9 +439,11 @@
         const nextMode = completedPomodoros % 4 === 0 ? "longBreak" : "shortBreak";
         switchMode(nextMode, false);
         statusEl.textContent = "作業完了。休憩に入れます。";
+        showNotification("作業完了", "休憩に入りましょう。");
       } else {
         switchMode("work", false);
         statusEl.textContent = "休憩完了。次の作業に入れます。";
+        showNotification("休憩完了", "次の作業に入りましょう。");
       }
     }
 
@@ -429,24 +494,74 @@
       return String(number).padStart(2, "0");
     }
 
-    function playBeep() {
+    function playAlertSound() {
       try {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gain = audioContext.createGain();
 
-        oscillator.type = "sine";
-        oscillator.frequency.value = 880;
-        gain.gain.setValueAtTime(0.001, audioContext.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.25, audioContext.currentTime + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.6);
+        const pattern = [
+          { frequency: 880, start: 0.00, duration: 0.18 },
+          { frequency: 660, start: 0.24, duration: 0.18 },
+          { frequency: 880, start: 0.48, duration: 0.18 },
+          { frequency: 660, start: 0.72, duration: 0.18 },
+          { frequency: 1046, start: 1.05, duration: 0.35 }
+        ];
 
-        oscillator.connect(gain);
-        gain.connect(audioContext.destination);
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.65);
+        pattern.forEach(note => {
+          const oscillator = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+
+          oscillator.type = "square";
+          oscillator.frequency.value = note.frequency;
+
+          const startTime = audioContext.currentTime + note.start;
+          const endTime = startTime + note.duration;
+
+          gain.gain.setValueAtTime(0.001, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.28, startTime + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, endTime);
+
+          oscillator.connect(gain);
+          gain.connect(audioContext.destination);
+          oscillator.start(startTime);
+          oscillator.stop(endTime + 0.02);
+        });
       } catch (error) {
         statusEl.textContent = "通知音を再生できませんでした";
+      }
+    }
+
+    function showNotification(title, body) {
+      if (!notificationsEnabled) return;
+      if (!("Notification" in window)) return;
+      if (Notification.permission !== "granted") return;
+
+      try {
+        new Notification(title, {
+          body,
+          tag: "blues-pomodoro",
+          renotify: true
+        });
+      } catch (error) {
+        statusEl.textContent = "通知を表示できませんでした";
+      }
+    }
+
+    function updateNotifyButton() {
+      if (!("Notification" in window)) {
+        notifyButton.textContent = "通知非対応";
+        notifyButton.classList.remove("active");
+        return;
+      }
+
+      if (Notification.permission === "granted" && notificationsEnabled) {
+        notifyButton.textContent = "通知オン";
+        notifyButton.classList.add("active");
+      } else if (Notification.permission === "denied") {
+        notifyButton.textContent = "通知拒否中";
+        notifyButton.classList.remove("active");
+      } else {
+        notifyButton.textContent = "通知をオン";
+        notifyButton.classList.remove("active");
       }
     }
   </script>
