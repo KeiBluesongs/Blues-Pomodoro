@@ -149,17 +149,20 @@
     }
 
     .stepper {
-      display: grid;
-      grid-template-columns: 42px 1fr 42px;
-      gap: 6px;
+      position: relative;
+      display: flex;
       align-items: center;
+      justify-content: center;
+      min-height: 56px;
       border-radius: 16px;
       border: 1px solid rgba(255, 255, 255, 0.24);
       background: rgba(255, 255, 255, 0.10);
-      padding: 6px;
+      padding: 6px 54px;
     }
 
     .stepper button {
+      position: absolute;
+      top: 6px;
       width: 42px;
       height: 42px;
       border: none;
@@ -172,18 +175,27 @@
       line-height: 1;
     }
 
+    .stepper button[data-action="minus"] {
+      left: 6px;
+    }
+
+    .stepper button[data-action="plus"] {
+      right: 6px;
+    }
+
     .stepper button:active {
       background: var(--text);
       color: var(--main);
     }
 
     .stepper-value {
+      display: block;
+      width: 100%;
       font-variant-numeric: tabular-nums;
       text-align: center;
       font-size: 1.2rem;
       font-weight: 800;
       color: var(--text);
-      min-width: 2ch;
     }
 
     .meta {
