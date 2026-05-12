@@ -12,7 +12,6 @@
       --muted: rgba(255, 255, 255, 0.78);
       --panel: rgba(255, 255, 255, 0.12);
       --panel-strong: rgba(255, 255, 255, 0.20);
-      --danger: #ffb3b3;
       --shadow: rgba(0, 0, 0, 0.28);
     }
 
@@ -141,28 +140,50 @@
       margin-top: 20px;
     }
 
-    label {
+    .setting-label {
       display: block;
       font-size: 0.78rem;
       color: var(--muted);
       margin-bottom: 6px;
+      font-weight: 700;
     }
 
-    input {
-      width: 100%;
-      border-radius: 14px;
+    .stepper {
+      display: grid;
+      grid-template-columns: 42px 1fr 42px;
+      gap: 6px;
+      align-items: center;
+      border-radius: 16px;
       border: 1px solid rgba(255, 255, 255, 0.24);
       background: rgba(255, 255, 255, 0.10);
-      color: var(--text);
-      padding: 10px;
-      text-align: center;
-      font-size: 1rem;
-      outline: none;
+      padding: 6px;
     }
 
-    input:focus {
-      border-color: var(--text);
+    .stepper button {
+      width: 42px;
+      height: 42px;
+      border: none;
+      border-radius: 12px;
       background: rgba(255, 255, 255, 0.16);
+      color: var(--text);
+      font-size: 1.35rem;
+      font-weight: 800;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .stepper button:active {
+      background: var(--text);
+      color: var(--main);
+    }
+
+    .stepper-value {
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--text);
+      min-width: 2ch;
     }
 
     .meta {
@@ -215,14 +236,10 @@
 
     .hint {
       color: var(--muted);
-      font-size: 0.78rem;
-      line-height: 1.55;
-      margin: 18px 0 0;
+      font-size: 0.72rem;
+      line-height: 1.7;
+      margin: 24px 6px 4px;
       text-align: center;
-    }
-
-    .danger {
-      color: var(--danger);
     }
 
     @media (max-width: 420px) {
@@ -235,14 +252,23 @@
         border-radius: 24px;
       }
 
-      .mode-tabs,
+      .mode-tabs {
+        grid-template-columns: 1fr;
+      }
+
       .settings {
         grid-template-columns: 1fr;
+        gap: 12px;
       }
 
       .controls,
       .notification-row {
         grid-template-columns: 1fr;
+      }
+
+      .hint {
+        font-size: 0.68rem;
+        margin-top: 22px;
       }
     }
   </style>
@@ -272,16 +298,28 @@
 
     <section class="settings" aria-label="時間設定">
       <div>
-        <label for="workMinutes">作業 分</label>
-        <input id="workMinutes" type="number" min="1" max="180" value="25" />
+        <span class="setting-label">作業 分</span>
+        <div class="stepper" data-mode="work">
+          <button type="button" data-action="minus" aria-label="作業時間を1分減らす">−</button>
+          <span id="workValue" class="stepper-value">25</span>
+          <button type="button" data-action="plus" aria-label="作業時間を1分増やす">＋</button>
+        </div>
       </div>
       <div>
-        <label for="shortBreakMinutes">短い休憩 分</label>
-        <input id="shortBreakMinutes" type="number" min="1" max="60" value="5" />
+        <span class="setting-label">短い休憩 分</span>
+        <div class="stepper" data-mode="shortBreak">
+          <button type="button" data-action="minus" aria-label="短い休憩を1分減らす">−</button>
+          <span id="shortBreakValue" class="stepper-value">5</span>
+          <button type="button" data-action="plus" aria-label="短い休憩を1分増やす">＋</button>
+        </div>
       </div>
       <div>
-        <label for="longBreakMinutes">長い休憩 分</label>
-        <input id="longBreakMinutes" type="number" min="1" max="120" value="15" />
+        <span class="setting-label">長い休憩 分</span>
+        <div class="stepper" data-mode="longBreak">
+          <button type="button" data-action="minus" aria-label="長い休憩を1分減らす">−</button>
+          <span id="longBreakValue" class="stepper-value">15</span>
+          <button type="button" data-action="plus" aria-label="長い休憩を1分増やす">＋</button>
+        </div>
       </div>
     </section>
 
@@ -302,15 +340,15 @@
     </section>
 
     <p class="hint">
-      通知音は明るめの上昇音です。通知はブラウザが許可した場合のみ表示されます。iPhoneでは画面ロック中やバックグラウンドでは正確に動かない場合があります。
+      終了予定時刻を保存し、再表示時に残り時間を補正します。通知はブラウザが許可した場合のみ表示されます。iPhoneでは画面ロック中の音・通知は保証できません。
     </p>
   </main>
 
   <script>
     const modes = {
-      work: { label: "作業", status: "作業中です" },
-      shortBreak: { label: "短い休憩", status: "短い休憩です" },
-      longBreak: { label: "長い休憩", status: "長い休憩です" }
+      work: { label: "作業", status: "作業中です", min: 1, max: 180, default: 25 },
+      shortBreak: { label: "短い休憩", status: "短い休憩です", min: 1, max: 60, default: 5 },
+      longBreak: { label: "長い休憩", status: "長い休憩です", min: 1, max: 120, default: 15 }
     };
 
     const timeEl = document.getElementById("time");
@@ -322,21 +360,38 @@
     const notifyButton = document.getElementById("notifyButton");
     const testSoundBtn = document.getElementById("testSound");
 
-    const inputs = {
-      work: document.getElementById("workMinutes"),
-      shortBreak: document.getElementById("shortBreakMinutes"),
-      longBreak: document.getElementById("longBreakMinutes")
+    const valueEls = {
+      work: document.getElementById("workValue"),
+      shortBreak: document.getElementById("shortBreakValue"),
+      longBreak: document.getElementById("longBreakValue")
     };
 
-    let currentMode = "work";
+    let durations = loadDurations();
+    let currentMode = localStorage.getItem("currentMode") || "work";
     let remainingSeconds = getMinutes(currentMode) * 60;
     let timerId = null;
+    let targetEndTime = Number(localStorage.getItem("targetEndTime") || 0);
     let completedPomodoros = Number(localStorage.getItem("completedPomodoros") || 0);
     let notificationsEnabled = localStorage.getItem("notificationsEnabled") === "true";
 
     completedEl.textContent = completedPomodoros;
+    renderDurations();
     updateCycle();
+    updateModeTabs();
     updateNotifyButton();
+
+    const wasRunning = localStorage.getItem("timerRunning") === "true";
+    if (wasRunning && targetEndTime > 0) {
+      syncRemainingWithClock();
+      if (remainingSeconds <= 0) {
+        handleCompletedTimer(true);
+      } else {
+        startTimer(true);
+        statusEl.textContent = "保存された終了予定時刻から再開しました";
+      }
+    } else {
+      remainingSeconds = getMinutes(currentMode) * 60;
+    }
     render();
 
     document.querySelectorAll(".tab").forEach(button => {
@@ -345,11 +400,21 @@
       });
     });
 
+    document.querySelectorAll(".stepper button").forEach(button => {
+      button.addEventListener("click", () => {
+        const wrapper = button.closest(".stepper");
+        const mode = wrapper.dataset.mode;
+        const action = button.dataset.action;
+        const delta = action === "plus" ? 1 : -1;
+        adjustDuration(mode, delta);
+      });
+    });
+
     startPauseBtn.addEventListener("click", () => {
       if (timerId) {
         pauseTimer();
       } else {
-        startTimer();
+        startTimer(false);
       }
     });
 
@@ -391,44 +456,54 @@
       showNotification("Blues Pomodoro", "通知テストです");
     });
 
-    Object.values(inputs).forEach(input => {
-      input.addEventListener("change", () => {
-        sanitizeInput(input);
-        if (!timerId) {
-          remainingSeconds = getMinutes(currentMode) * 60;
-          render();
-        }
-      });
+    window.addEventListener("focus", checkSavedEndTime);
+    window.addEventListener("pageshow", checkSavedEndTime);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        checkSavedEndTime();
+      }
     });
 
-    function startTimer() {
+    function startTimer(resume) {
+      if (!resume) {
+        targetEndTime = Date.now() + remainingSeconds * 1000;
+        saveTimerState(true);
+      }
+
+      clearInterval(timerId);
       startPauseBtn.textContent = "一時停止";
       statusEl.textContent = modes[currentMode].status;
 
       timerId = setInterval(() => {
-        remainingSeconds -= 1;
+        syncRemainingWithClock();
         render();
 
         if (remainingSeconds <= 0) {
-          completeMode();
+          handleCompletedTimer(false);
         }
-      }, 1000);
+      }, 250);
     }
 
     function pauseTimer() {
       clearInterval(timerId);
       timerId = null;
+      targetEndTime = 0;
+      saveTimerState(false);
       startPauseBtn.textContent = "開始";
       if (remainingSeconds > 0) {
         statusEl.textContent = "一時停止中です";
       }
     }
 
-    function completeMode() {
+    function handleCompletedTimer(wasRestored) {
       clearInterval(timerId);
       timerId = null;
+      saveTimerState(false);
       startPauseBtn.textContent = "開始";
-      playHappySound();
+
+      if (!wasRestored) {
+        playHappySound();
+      }
 
       if (currentMode === "work") {
         completedPomodoros += 1;
@@ -438,22 +513,26 @@
 
         const nextMode = completedPomodoros % 4 === 0 ? "longBreak" : "shortBreak";
         switchMode(nextMode, false);
-        statusEl.textContent = "作業完了。休憩に入れます。";
+        statusEl.textContent = wasRestored
+          ? "作業時間は経過していました。休憩に入れます。"
+          : "作業完了。休憩に入れます。";
         showNotification("作業完了", "休憩に入りましょう。");
       } else {
         switchMode("work", false);
-        statusEl.textContent = "休憩完了。次の作業に入れます。";
+        statusEl.textContent = wasRestored
+          ? "休憩時間は経過していました。次の作業に入れます。"
+          : "休憩完了。次の作業に入れます。";
         showNotification("休憩完了", "次の作業に入りましょう。");
       }
+
+      render();
     }
 
     function switchMode(mode, manual) {
       currentMode = mode;
+      localStorage.setItem("currentMode", currentMode);
       remainingSeconds = getMinutes(mode) * 60;
-
-      document.querySelectorAll(".tab").forEach(button => {
-        button.classList.toggle("active", button.dataset.mode === mode);
-      });
+      updateModeTabs();
 
       if (manual) {
         pauseTimer();
@@ -463,6 +542,70 @@
       render();
     }
 
+    function checkSavedEndTime() {
+      if (localStorage.getItem("timerRunning") !== "true") return;
+      targetEndTime = Number(localStorage.getItem("targetEndTime") || 0);
+      if (!targetEndTime) return;
+
+      syncRemainingWithClock();
+      if (remainingSeconds <= 0) {
+        handleCompletedTimer(true);
+      } else {
+        render();
+      }
+    }
+
+    function syncRemainingWithClock() {
+      if (!targetEndTime) return;
+      remainingSeconds = Math.max(0, Math.ceil((targetEndTime - Date.now()) / 1000));
+    }
+
+    function saveTimerState(isRunning) {
+      localStorage.setItem("timerRunning", String(isRunning));
+      localStorage.setItem("currentMode", currentMode);
+
+      if (isRunning) {
+        localStorage.setItem("targetEndTime", String(targetEndTime));
+      } else {
+        localStorage.removeItem("targetEndTime");
+      }
+    }
+
+    function adjustDuration(mode, delta) {
+      const next = clamp(durations[mode] + delta, modes[mode].min, modes[mode].max);
+      durations[mode] = next;
+      localStorage.setItem("durations", JSON.stringify(durations));
+      renderDurations();
+
+      if (!timerId && currentMode === mode) {
+        remainingSeconds = getMinutes(mode) * 60;
+        render();
+      }
+    }
+
+    function loadDurations() {
+      try {
+        const saved = JSON.parse(localStorage.getItem("durations") || "{}");
+        return {
+          work: clamp(Number(saved.work) || modes.work.default, modes.work.min, modes.work.max),
+          shortBreak: clamp(Number(saved.shortBreak) || modes.shortBreak.default, modes.shortBreak.min, modes.shortBreak.max),
+          longBreak: clamp(Number(saved.longBreak) || modes.longBreak.default, modes.longBreak.min, modes.longBreak.max)
+        };
+      } catch {
+        return {
+          work: modes.work.default,
+          shortBreak: modes.shortBreak.default,
+          longBreak: modes.longBreak.default
+        };
+      }
+    }
+
+    function renderDurations() {
+      valueEls.work.textContent = durations.work;
+      valueEls.shortBreak.textContent = durations.shortBreak;
+      valueEls.longBreak.textContent = durations.longBreak;
+    }
+
     function render() {
       const minutes = Math.floor(remainingSeconds / 60);
       const seconds = remainingSeconds % 60;
@@ -470,28 +613,27 @@
       document.title = `${timeEl.textContent} - ${modes[currentMode].label}`;
     }
 
-    function getMinutes(mode) {
-      const value = Number(inputs[mode].value);
-      return Number.isFinite(value) && value > 0 ? Math.floor(value) : 25;
+    function updateModeTabs() {
+      document.querySelectorAll(".tab").forEach(button => {
+        button.classList.toggle("active", button.dataset.mode === currentMode);
+      });
     }
 
-    function sanitizeInput(input) {
-      const min = Number(input.min);
-      const max = Number(input.max);
-      let value = Number(input.value);
-
-      if (!Number.isFinite(value)) value = min;
-      value = Math.max(min, Math.min(max, Math.floor(value)));
-      input.value = value;
+    function getMinutes(mode) {
+      return durations[mode] || modes[mode].default;
     }
 
     function updateCycle() {
-      const remaining = 4 - (completedPomodoros % 4 || 4);
-      cycleEl.textContent = remaining === 0 ? 4 : remaining;
+      const doneInCycle = completedPomodoros % 4;
+      cycleEl.textContent = doneInCycle === 0 ? 4 : 4 - doneInCycle;
     }
 
     function pad(number) {
       return String(number).padStart(2, "0");
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, Math.floor(value)));
     }
 
     function playHappySound() {
